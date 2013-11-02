@@ -150,7 +150,7 @@ remote_addr_test_() ->
 	 {"binary", ?_assertEqual("localhost", zabbix_sender:remote_addr(<<"localhost">>, false, nothing))},
 	 {"list", ?_assertEqual("localhost", zabbix_sender:remote_addr("localhost", false, nothing))},
 	 {"resolve inet", ?_assertEqual("127.0.0.1", zabbix_sender:remote_addr("localhost", true, inet))},
-	 {"resolve inet6", ?_assertEqual("::1", zabbix_sender:remote_addr("ip6-localhost", true, inet6))}
+	 {"resolve inet6", ?_assertEqual("::1", zabbix_sender:remote_addr("localhost", true, inet6))}
 	].
 
 
