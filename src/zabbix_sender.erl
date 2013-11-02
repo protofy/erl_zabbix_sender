@@ -125,8 +125,6 @@
 						   | {module(), function()}
 						   | {module(), function(), [any()]}
 						   | fun().
--type server_ref() :: pid()
-					| atom().
 -type key() :: string()
 			 | binary()
 			 | atom().
