@@ -1,0 +1,5 @@
+0.1.1
+------
+- Refactorings in tests
+- Using branch 1.x of deck36_common instead of master
+- Address changed in license

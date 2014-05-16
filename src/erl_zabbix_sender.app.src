@@ -1,6 +1,6 @@
 {application, erl_zabbix_sender,
  [{description, "DECK36 - Erlang Zabbix Sender"},
-  {vsn, "0.1.0"},
+  {vsn, "0.1.1"},
   {registered, [zabbix_sender]},
   {application, [kernel, stdlib]},
   {env, []}
