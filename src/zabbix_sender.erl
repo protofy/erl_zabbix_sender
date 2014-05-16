@@ -125,9 +125,6 @@
 						   | {module(), function()}
 						   | {module(), function(), [any()]}
 						   | fun().
--type key() :: string()
-			 | binary()
-			 | atom().
 -type value() :: term().
 -type info_item() :: {term(), term()}.
 
