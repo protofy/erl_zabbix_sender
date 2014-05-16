@@ -50,33 +50,31 @@
 %% Test cmd_format/2
 %% ====================================================================
 cmd_format_test_() ->
-	Rest = " -k \"~s\" -o ~p",
 	Bin = "test_bin",
 	{setup,
 	 fun() ->
-			 mock_filelib()
+			 mock_filelib(),
+			 Rest = " -k \"~s\" -o ~p",
+			 T = fun(E, X) ->
+						 ?_assertEqual(Bin ++ E ++ Rest, zabbix_sender:cmd_format(Bin, X))
+						 end,
+			 T
 	 end,
 	 fun(_) ->
-			 unmock(filelib)
+			 deck36_test_util:unmock(filelib)
 	 end,
-	 fun(_) ->
+	 fun(T) ->
 			 [
-			  {"simple", ?_assertEqual(Bin ++ Rest, zabbix_sender:cmd_format(Bin, []))},
-			  {"remote_addr", ?_assertEqual(Bin ++ " -z \"1.2.3.4\"" ++ Rest,
-											zabbix_sender:cmd_format(Bin, [{remote_addr, "1.2.3.4"}]))},
-			  [{"remote_port " ++ F, ?_assertEqual(Bin ++ " -p \"1234\"" ++ Rest,
-												   zabbix_sender:cmd_format(Bin, [{remote_port, V}]))}
+			  {"simple", T([], [])},
+			  {"remote_addr", T(" -z \"1.2.3.4\"", [{remote_addr, "1.2.3.4"}])},
+			  [{"remote_port " ++ F, T(" -p \"1234\"", [{remote_port, V}])}
 			   || {F, V} <- [{"integer", 1234}, {"binary", <<"1234">>}, {"list", "1234"}]],
-			  {"local_name string", ?_assertEqual(Bin ++ " -s \"test\"" ++ Rest,
-												  zabbix_sender:cmd_format(Bin, [{local_name, "test"}]))},
-			  {"local_name binary", ?_assertEqual(Bin ++ " -s \"test\"" ++ Rest,
-												  zabbix_sender:cmd_format(Bin, [{local_name, <<"test">>}]))},
-			  {"config file string", ?_assertEqual(Bin ++ " -c \"regular\"" ++ Rest,
-												   zabbix_sender:cmd_format(Bin, [{config_file, "regular"}]))},
-			  {"config file binary", ?_assertEqual(Bin ++ " -c \"regular\"" ++ Rest,
-												   zabbix_sender:cmd_format(Bin, [{config_file, <<"regular">>}]))},
-			  {"config file enoent", ?_assertError(enoent,
-												   zabbix_sender:cmd_format(Bin, [{config_file, "any"}]))}
+			  {"local_name string", T(" -s \"test\"", [{local_name, "test"}])},
+			  {"local_name binary", T(" -s \"test\"", [{local_name, <<"test">>}])},
+			  {"config file string", T(" -c \"regular\"", [{config_file, "regular"}])},
+			  {"config file binary", T(" -c \"regular\"", [{config_file, <<"regular">>}])},
+			  {"config file enoent",
+			   ?_assertError(enoent, zabbix_sender:cmd_format(Bin, [{config_file, "any"}]))}
 			 ]
 	 end}.
 
@@ -212,7 +210,7 @@ update_resolve_timer_test_() ->
 			 ok
 	 end,
 	 fun(_) ->
-			 unmock(timer),
+			 deck36_test_util:unmock(timer),
 			 ok
 	 end,
 	 fun(_) ->
@@ -257,7 +255,7 @@ start_stop_unnamed_test() ->
 	Ref = ?GV(ref, Info),
 	?assert(is_process_alive(Ref)),
 	?assertEqual(ok, zabbix_sender:stop(Ref)),
-	?assertNot(erlang:is_process_alive(Ref)).
+	?assertEqual(ok, deck36_test_util:wait_for_stop(Ref, 20)).
 
 
 %% Test start/1 named, stop/1
@@ -287,7 +285,7 @@ test_named_start_stop(Ref, Opts) ->
 	?assertEqual(Pid, whereis(Ref)),
 	?assertEqual(ok, zabbix_sender:stop(Ref)),
 	?assertEqual(undefined, erlang:whereis(Ref)),
-	?assertNot(erlang:is_process_alive(Pid)).
+	?assertEqual(ok, deck36_test_util:wait_for_stop(Pid, 20)).
 		 
 
 %% Test info/1, set_remote/5, set_local_name/2, set_zabbix_sender_bin/2,
@@ -552,18 +550,4 @@ mock_timer() ->
 						(_) -> {error, no_tref}
 					 end),
 	ok.
-
-
-%% Unmock given Mod
-%% ====================================================================
-unmock(Mod) ->
-	try
-		meck:unload(Mod),
-		code:ensure_loaded(Mod)
-	catch
-		error:{not_mocked,Mod} -> ok;
-		error:Reason ->
-			error_logger:error_report({?MODULE, unmock, Reason}),
-			ok
-	end.
 
