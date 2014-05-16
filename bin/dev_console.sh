@@ -1,5 +1,5 @@
 #!/bin/bash
-BASEDIR=$(readlink -f "$(dirname $0)/..")
+BASEDIR="$(dirname $0)/../"
 NODE="-sname dev"
 
 cd $BASEDIR 
