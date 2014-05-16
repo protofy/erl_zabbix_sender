@@ -14,7 +14,7 @@ compile:
 compile-prod:
 	@$(REBAR) compile 
 tests:
-	@$(REBAR) skip_deps=true eunit ct
+	@$(REBAR) skip_deps=true eunit
 clean:
 	@$(REBAR) skip_deps=true clean
 clean-all:
