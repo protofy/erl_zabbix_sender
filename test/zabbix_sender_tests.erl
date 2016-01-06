@@ -1,6 +1,6 @@
 %% ====================================================================
 %%
-%% Copyright (c) DECK36 GmbH & Co. KG, Burchardstraße 21, 20095 Hamburg/Germany and individual contributors.
+%% Copyright (c) Protofy GmbH & Co. KG, Kaiser-Wilhelm-Straße 85, 20355 Hamburg/Germany and individual contributors.
 %% All rights reserved.
 %% 
 %% Redistribution and use in source and binary forms, with or without modification,
@@ -13,7 +13,7 @@
 %%        notice, this list of conditions and the following disclaimer in the
 %%        documentation and/or other materials provided with the distribution.
 %% 
-%%     3. Neither the name of DECK36 GmbH & Co. KG nor the names of its contributors may be used
+%%     3. Neither the name of Protofy GmbH & Co. KG nor the names of its contributors may be used
 %%        to endorse or promote products derived from this software without
 %%        specific prior written permission.
 %% 
@@ -30,14 +30,14 @@
 %%
 %% ====================================================================
 %%
-%% @author Bjoern Kortuemm (@uuid0) <bjoern.kortuemm@deck36.de>
+%% @author Bjoern Kortuemm (@uuid0) <bjoern@protofy.com>
 
 -module(zabbix_sender_tests).
 
 -export([]).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("deck36_common/include/deck36_common.hrl").
+-include_lib("protofy_common/include/protofy_common.hrl").
 
 -define(ETS, zabbix_sender_tests_tab).
 
@@ -61,7 +61,7 @@ cmd_format_test_() ->
 			 T
 	 end,
 	 fun(_) ->
-			 deck36_test_util:unmock(filelib)
+			 protofy_test_util:unmock(filelib)
 	 end,
 	 fun(T) ->
 			 [
@@ -210,7 +210,7 @@ update_resolve_timer_test_() ->
 			 ok
 	 end,
 	 fun(_) ->
-			 deck36_test_util:unmock(timer),
+			 protofy_test_util:unmock(timer),
 			 ok
 	 end,
 	 fun(_) ->
@@ -255,7 +255,7 @@ start_stop_unnamed_test() ->
 	Ref = ?GV(ref, Info),
 	?assert(is_process_alive(Ref)),
 	?assertEqual(ok, zabbix_sender:stop(Ref)),
-	?assertEqual(ok, deck36_test_util:wait_for_stop(Ref, 20)).
+	?assertEqual(ok, protofy_test_util:wait_for_stop(Ref, 20)).
 
 
 %% Test start/1 named, stop/1
@@ -285,7 +285,7 @@ test_named_start_stop(Ref, Opts) ->
 	?assertEqual(Pid, whereis(Ref)),
 	?assertEqual(ok, zabbix_sender:stop(Ref)),
 	?assertEqual(undefined, erlang:whereis(Ref)),
-	?assertEqual(ok, deck36_test_util:wait_for_stop(Pid, 20)).
+	?assertEqual(ok, protofy_test_util:wait_for_stop(Pid, 20)).
 		 
 
 %% Test info/1, set_remote/5, set_local_name/2, set_zabbix_sender_bin/2,
