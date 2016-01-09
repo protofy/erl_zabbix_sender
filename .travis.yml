@@ -3,3 +3,10 @@ notifications:
   email: false
 otp_release:
   - R16B03
+  - 17.0
+  - 17.1
+  - 17.3
+  - 17.4
+  - 17.5
+  - 18.0
+sudo: false
