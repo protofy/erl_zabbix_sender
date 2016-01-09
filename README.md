@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.org/protofy/erl_zabbix_sender.svg)](https://travis-ci.org/protofy/erl_zabbix_sender)
-
 erl_zabbix_sender
 ==================
 
