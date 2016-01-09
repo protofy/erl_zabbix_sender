@@ -1,7 +1,7 @@
 {application, erl_zabbix_sender,
  [{description, "Protofy - Erlang Zabbix Sender"},
-  {vsn, "0.1.1"},
+  {vsn, "0.1.2"},
   {registered, [zabbix_sender]},
-  {application, [kernel, stdlib]},
+  {applications, [kernel, stdlib]},
   {env, []}
  ]}.
