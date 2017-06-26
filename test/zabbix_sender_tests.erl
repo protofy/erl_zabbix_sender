@@ -456,7 +456,7 @@ singleton_test_send(_C) ->
 	Value = crypto:rand_uniform(0, 100000),
 	Log = filename:absname("../test/logs/l_" ++ Key),
 	zabbix_sender:send(Key, Value),
-	timer:sleep(50),
+	timer:sleep(200),
 	R1 = file:read_file(Log),
 	?assertMatch(ok, file:delete(Log)),
 	?assertMatch({ok, _}, R1),
