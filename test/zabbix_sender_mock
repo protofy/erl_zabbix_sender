@@ -5,6 +5,7 @@ LOG_PREFIX="$LOG_DIR/l_"
 
 KEY=""
 VALUE=""
+LOCAL_NAME=""
 
 while getopts ":c:s:z:k:o:" opt; do
 	case $opt in
@@ -14,13 +15,16 @@ while getopts ":c:s:z:k:o:" opt; do
 		o)
 			VALUE="$OPTARG"
 			;;
+		s)
+			LOCAL_NAME="$OPTARG"
+			;;
 		*)
 			;;
 	esac
 done
 
 if [ "$KEY" != "error_key" ]; then
-	echo -n "$VALUE" > "${LOG_PREFIX}${KEY}"
+	echo -n "$VALUE" > "${LOG_PREFIX}${KEY}.${LOCAL_NAME}"
 	echo -e "info from server: \"Processed 1 Failed 0 Total 1 Seconds spent 0.0\"\nsent: 1; skipped: 0; total: 1\n"
 else
 	echo -e "info from server: \"Processed 0 Failed 1 Total 1 Seconds spent 0.0\"\nsent: 1; skipped: 0; total: 1\n"

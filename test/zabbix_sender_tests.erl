@@ -69,8 +69,8 @@ cmd_format_test_() ->
 			  {"remote_addr", T(" -z \"1.2.3.4\"", [{remote_addr, "1.2.3.4"}])},
 			  [{"remote_port " ++ F, T(" -p \"1234\"", [{remote_port, V}])}
 			   || {F, V} <- [{"integer", 1234}, {"binary", <<"1234">>}, {"list", "1234"}]],
-			  {"local_name string", T(" -s \"test\"", [{local_name, "test"}])},
-			  {"local_name binary", T(" -s \"test\"", [{local_name, <<"test">>}])},
+%%			  {"local_name string", T(" -s \"test\"", [{local_name, "test"}])},
+%%			  {"local_name binary", T(" -s \"test\"", [{local_name, <<"test">>}])},
 			  {"config file string", T(" -c \"regular\"", [{config_file, "regular"}])},
 			  {"config file binary", T(" -c \"regular\"", [{config_file, <<"regular">>}])},
 			  {"config file enoent",
@@ -82,11 +82,21 @@ cmd_format_test_() ->
 %% Test cmd/3
 %% ====================================================================
 cmd_test_() ->
+	E0 = "{key,42}",
+	E1 = "{key,42} -s \"test_local\"",
 	[
-	 {"string string integer", ?_assertEqual("{key,42}", zabbix_sender:cmd("{~s,~B}", "key", 42))},
-	 {"binary string integer", ?_assertEqual("{key,42}", zabbix_sender:cmd(<<"{~s,~B}">>, "key", 42))},
-	 {"string binary integer", ?_assertEqual("{key,42}", zabbix_sender:cmd("{~s,~B}", <<"key">>, 42))},
-	 {"binary binary integer", ?_assertEqual("{key,42}", zabbix_sender:cmd(<<"{~s,~B}">>, <<"key">>, 42))}
+	 {"string string integer", ?_assertEqual(E0, zabbix_sender:cmd("{~s,~B}", "key", 42, []))},
+	 {"binary string integer", ?_assertEqual(E0, zabbix_sender:cmd(<<"{~s,~B}">>, "key", 42, []))},
+	 {"string binary integer", ?_assertEqual(E0, zabbix_sender:cmd("{~s,~B}", <<"key">>, 42, []))},
+	 {"binary binary integer", ?_assertEqual(E0, zabbix_sender:cmd(<<"{~s,~B}">>, <<"key">>, 42, []))},
+	 {"string string integer string", ?_assertEqual(E1, zabbix_sender:cmd("{~s,~B}", "key", 42, [{local_name, "test_local"}]))},
+	 {"binary string integer string", ?_assertEqual(E1, zabbix_sender:cmd(<<"{~s,~B}">>, "key", 42, [{local_name, "test_local"}]))},
+	 {"string binary integer string", ?_assertEqual(E1, zabbix_sender:cmd("{~s,~B}", <<"key">>, 42, [{local_name, "test_local"}]))},
+	 {"binary binary integer string", ?_assertEqual(E1, zabbix_sender:cmd(<<"{~s,~B}">>, <<"key">>, 42, [{local_name, "test_local"}]))},
+	 {"string string integer binary", ?_assertEqual(E1, zabbix_sender:cmd("{~s,~B}", "key", 42, [{local_name, <<"test_local">>}]))},
+	 {"binary string integer binary", ?_assertEqual(E1, zabbix_sender:cmd(<<"{~s,~B}">>, "key", 42, [{local_name, <<"test_local">>}]))},
+	 {"string binary integer binary", ?_assertEqual(E1, zabbix_sender:cmd("{~s,~B}", <<"key">>, 42, [{local_name, <<"test_local">>}]))},
+	 {"binary binary integer binary", ?_assertEqual(E1, zabbix_sender:cmd(<<"{~s,~B}">>, <<"key">>, 42, [{local_name, <<"test_local">>}]))}
 	].
 
 
@@ -302,7 +312,8 @@ api_test_() ->
 	  fun(C) -> {"set_zabbix_sender_bin/2", fun() -> test_set_zabbix_sender_bin(C) end} end,
 	  fun(C) -> {"set_error_handler/2", fun() -> test_set_error_handler(C) end} end,
 	  fun(C) -> {"send/3", fun() -> test_send(C) end} end,
-	  fun(C) -> {"send/3 error handler", fun() -> test_send_error(C) end} end
+	  fun(C) -> {"send/3 error handler", fun() -> test_send_error(C) end} end,
+		fun(C) -> {"send/4", fun() -> test_send_4(C) end} end
 	 ]
 	}.
 
@@ -358,13 +369,13 @@ test_set_error_handler(C) ->
 	?assertEqual(ok, zabbix_sender:set_error_handler(Ref, F)).
 
 
-%% Test send_test/3
+%% Test send/3
 %% ====================================================================
 test_send(C) ->
 	Ref = ?GV(ref, C),
 	Key = lists:flatten(io_lib:format("~B", [crypto:rand_uniform(0, 100000)])),
 	Value = crypto:rand_uniform(0, 100000),
-	Log = filename:absname("../test/logs/l_" ++ Key),
+	Log = filename:absname("../test/logs/l_" ++ Key ++ "."),
 	zabbix_sender:send(Ref, Key, Value),
 	timer:sleep(200),
 	R1 = file:read_file(Log),
@@ -375,7 +386,7 @@ test_send(C) ->
 	?assertEqual(Expected, Actual).
 
 
-%% Test send_test/3 with error handling
+%% Test send/3 with error handling
 %% ====================================================================
 test_send_error(C) ->
 	Ref = ?GV(ref, C),
@@ -390,6 +401,23 @@ test_send_error(C) ->
 			 end,
 	?assertEqual({zabbix_sender,"error_key",0}, ?GV(source, Result)),
 	?assertEqual(sending_failed, ?GV(error, Result)).
+
+
+%% Test send/4
+%% ====================================================================
+test_send_4(C) ->
+	Ref = ?GV(ref, C),
+	Key = lists:flatten(io_lib:format("~B", [crypto:rand_uniform(0, 100000)])),
+	Value = crypto:rand_uniform(0, 100000),
+	Log = filename:absname("../test/logs/l_" ++ Key ++ ".override"),
+	zabbix_sender:send(Ref, Key, Value, [{local_name, "override"}]),
+	timer:sleep(200),
+	R1 = file:read_file(Log),
+	?assertEqual(ok, file:delete(Log)),
+	?assertMatch({ok, _}, R1),
+	{ok, Actual} = R1,
+	Expected = erlang:list_to_binary(lists:flatten(io_lib:format("~B", [Value]))),
+	?assertEqual(Expected, Actual).
 
 
 %% Test info/0, set_remote/4, set_local_name/1, set_zabbix_sender_bin/1,
@@ -449,12 +477,12 @@ singleton_test_set_zabbix_sender_bin(C) ->
 	?assertEqual(Fn, ?GV(zabbix_sender_bin, zabbix_sender:info())).
 
 
-%% Test send_test/2
+%% Test send/2
 %% ====================================================================
 singleton_test_send(_C) ->
 	Key = lists:flatten(io_lib:format("~B", [crypto:rand_uniform(0, 100000)])),
 	Value = crypto:rand_uniform(0, 100000),
-	Log = filename:absname("../test/logs/l_" ++ Key),
+	Log = filename:absname("../test/logs/l_" ++ Key ++ "."),
 	zabbix_sender:send(Key, Value),
 	timer:sleep(200),
 	R1 = file:read_file(Log),

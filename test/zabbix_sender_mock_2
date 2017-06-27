@@ -1,27 +1,2 @@
 #!/bin/bash
-LOG_FILE="$(dirname $0)/zabbix_sender_mock.log"
-
-echo -n $@ > "$LOG_FILE"
-
-KEY=""
-VALUE=""
-
-while getopts ":c:s:z:k:o:" opt; do
-	case $opt in
-		k)
-			KEY="$OPTARG"
-			;;
-		o)
-			VALUE="$OPTARG"
-			;;
-		*)
-			;;
-	esac
-done
-
-if [ "$KEY" == "test_key" ]; then
-	echo -e "info from server: \"Processed 1 Failed 0 Total 1 Seconds spent 0.0\"\nsent: 1; skipped: 0; total: 1\n"
-else
-	echo -e "info from server: \"Processed 0 Failed 1 Total 1 Seconds spent 0.0\"\nsent: 1; skipped: 0; total: 1\n"
-fi
-
+echo "I'm a placeholder"

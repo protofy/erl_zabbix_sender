@@ -95,6 +95,7 @@
              | {zabbix_sender_bin, zabbix_sender_bin_opt()}
              | {config_file, string() | binary()}
              | {error_handler, error_handler_opt()}.
+-type sending_opt() :: {local_name, local_name_opt()}.
 -type remote_addr_opt() :: remote_hostname_opt()
                          | remote_ip_opt().
 -type remote_hostname_opt() :: binary()
@@ -134,7 +135,7 @@
 -export([
   start_link/1,
   stop/0, stop/1,
-  send/2, send/3,
+  send/2, send/3, send/4,
   info/0, info/1,
   set_remote/4, set_remote/5,
   set_local_name/1, set_local_name/2,
@@ -199,11 +200,29 @@ send(Key, Value) ->
 
 %% send/3
 %% ====================================================================
-%% @doc Send Key-Value-pair via server identified by Ref
+%% @doc Send Key-Value-pair with overrides via server identified by Ref
 -spec send(server_ref(), key(), value()) -> ok.
 %% ====================================================================
 send(Ref, Key, Value) ->
   gen_server:cast(Ref, {send, Key, Value}).
+
+
+%% send/4
+%% ====================================================================
+%% @doc Send Key-Value-pair with overrides via server identified by Ref
+%%
+%% Allowed overrides: local_name
+%% zabbix_sender:send(Ref, "answer", 42, [{local_name, "Deep Thought"}])
+%% zabbix_sender:send(singleton, "answer", 42, [{local_name, "Deep Thought"}])
+%%
+-spec send(server_ref(), key(), value(), [sending_opt()]) -> ok.
+%% ====================================================================
+send(Ref, Key, Value, OptsOverride) ->
+  Ref1 = case Ref of
+           singleton -> ?SERVER;
+           Ref -> Ref
+         end,
+  gen_server:cast(Ref1, {send, Key, Value, OptsOverride}).
 
 
 %% info/0
@@ -335,16 +354,16 @@ init([Opts]) ->
                  end;
                RA ->
                  [{remote_addr, remote_addr(RA, ResolveNow, ResolveTo)} | CmdOpts]
-    end,
-    {ok, update_resolve_timer(
-     update_prepared(
-     #state{
-        cmd_opts = CmdOpts1,
-        resolve_when = ResolveWhen,
-        resolve_to = ResolveTo,
-        bin = zabbix_sender_bin(?GV(zabbix_sender_bin, Opts, ?DEFAULT_ZABBIX_SENDER_BIN)),
-        error_handler = error_handler(?GV(error_handler, Opts, default))
-     }))}.
+             end,
+  {ok, update_resolve_timer(
+   update_prepared(
+   #state{
+      cmd_opts = CmdOpts1,
+      resolve_when = ResolveWhen,
+      resolve_to = ResolveTo,
+      bin = zabbix_sender_bin(?GV(zabbix_sender_bin, Opts, ?DEFAULT_ZABBIX_SENDER_BIN)),
+      error_handler = error_handler(?GV(error_handler, Opts, default))
+   }))}.
 
 
 %% handle_call/3
@@ -405,13 +424,11 @@ handle_call(_Request, _From, State) ->
   NewState :: term(),
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast({send, Key, Value}, #state{cmd_format=Format, error_handler=EH}=S) ->
-  R = os:cmd(cmd(Format, Key, Value)),
-  case re:run(R, ?RESULT_PATTERN, [{capture, all_but_first, binary}, firstline]) of
-    nomatch ->                EH([{source, {zabbix_sender, Key, Value}}, {error, {invalid_result, R}}]);
-    {match, [_, <<"0">>]} ->  ok;
-    {match, [_, _]} ->        EH([{source, {zabbix_sender, Key, Value}}, {error, sending_failed}])
-  end,
+handle_cast({send, Key, Value}, #state{cmd_format=Format, error_handler=EH, cmd_opts=Opts}=S) ->
+  do_send(Key, Value, Format, Opts, EH),
+  {noreply, S};
+handle_cast({send, Key, Value, OptsOverride}, #state{cmd_format=Format, error_handler=EH, cmd_opts=Opts}=S) ->
+  do_send(Key, Value, Format, OptsOverride ++ Opts, EH),
   {noreply, S};
 
 handle_cast(_Msg, State) ->
@@ -462,6 +479,22 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %% ====================================================================
 
+
+%% do_send/5
+%% ====================================================================
+%% @doc Send Key/Value via zabbix_sender with given Opts.
+%% Call ErrorHandler if sending failed.
+-spec do_send(key(), value(), string(), list(), function()) -> term().
+%% ====================================================================
+do_send(Key, Value, Format, Opts, ErrorHandler) ->
+  Result = os:cmd(cmd(Format, Key, Value, Opts)),
+  case re:run(Result, ?RESULT_PATTERN, [{capture, all_but_first, binary}, firstline]) of
+    nomatch ->                ErrorHandler([{source, {zabbix_sender, Key, Value}}, {error, {invalid_result, Result}}]);
+    {match, [_, <<"0">>]} ->  ok;
+    {match, [_, _]} ->        ErrorHandler([{source, {zabbix_sender, Key, Value}}, {error, sending_failed}])
+  end.
+
+
 %% cmd_format/2
 %% ====================================================================
 %% @doc Prepare command format to be finalized by cmd/3.
@@ -494,17 +527,24 @@ cmd_format(Bin, [{remote_port, X}|T], A) ->
   Port = protofy_inet:port_number(X),
   cmd_format(Bin, T, io_lib:format(" -p \"~B\"", [Port]) ++ A);
 
-cmd_format(Bin, [{local_name, X}|T], A) ->
-  cmd_format(Bin, T, io_lib:format(" -s \"~s\"", [X]) ++ A).
+cmd_format(Bin, [_|T], A) ->
+  cmd_format(Bin, T, A).
 
 
 %% cmd/3
 %% ====================================================================
 %% @doc Finalized command formatting to be executed by os:cmd/1
--spec cmd(Format :: string(), key(), value()) -> string().
+-spec cmd(Format :: string(), key(), value(), [sending_opt()]) -> string().
 %% ====================================================================
-cmd(Format, Key, Value) ->
-  lists:flatten(io_lib:format(Format, [Key, Value])).
+cmd(Format, Key, Value, Opts) ->
+  lists:flatten(case ?GV(local_name, Opts) of
+                  undefined ->
+                    io_lib:format(Format, [Key, Value]);
+                  LocalName when is_binary(Format) ->
+                    io_lib:format(<<Format/binary, " -s \"~s\"">>, [Key, Value, LocalName]);
+                  LocalName when is_list(Format) ->
+                    io_lib:format(Format ++ " -s \"~s\"", [Key, Value, LocalName])
+                end).
 
 
 %% do_info/1

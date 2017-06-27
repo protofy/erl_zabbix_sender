@@ -1,3 +1,5 @@
+- Added zabbix_sender:send/4, allowing setting override options for that send operation. Currently only local_name can be overwritten. Thanks to Thiago Camargo (xmppjingle) for suggesting this feature.
+
 0.1.1
 ------
 - Refactorings in tests
