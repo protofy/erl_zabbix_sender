@@ -294,9 +294,9 @@ test_named_start_stop(Ref, Opts) ->
 	{ok, Pid} = zabbix_sender:start_link(Opts),
 	?assertEqual(Pid, whereis(Ref)),
 	?assertEqual(ok, zabbix_sender:stop(Ref)),
-	?assertEqual(undefined, erlang:whereis(Ref)),
-	?assertEqual(ok, protofy_test_util:wait_for_stop(Pid, 20)).
-		 
+	?assertEqual(ok, protofy_test_util:wait_for_stop(Pid, 20)),
+  ?assertEqual(undefined, erlang:whereis(Ref)).
+
 
 %% Test info/1, set_remote/5, set_local_name/2, set_zabbix_sender_bin/2,
 %% send/3
