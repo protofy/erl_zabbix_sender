@@ -203,6 +203,7 @@ send(Key, Value) ->
 -spec send(server_ref(), key(), value()) -> ok.
 %% ====================================================================
 send(Ref, {Name, Key}, Value) ->
+  set_local_name(Ref, Name),
   gen_server:cast(Ref, {send, Name, Key, Value});
 send(Ref, Key, Value) ->
   gen_server:cast(Ref, {send, Key, Value}).
@@ -407,16 +408,6 @@ handle_call(_Request, _From, State) ->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_cast({send, Key, Value}, #state{cmd_format=Format, error_handler=EH}=S) ->
-  R = os:cmd(cmd(Format, Key, Value)),
-  case re:run(R, ?RESULT_PATTERN, [{capture, all_but_first, binary}, firstline]) of
-    nomatch ->                EH([{source, {zabbix_sender, Key, Value}}, {error, {invalid_result, R}}]);
-    {match, [_, <<"0">>]} ->  ok;
-    {match, [_, _]} ->        EH([{source, {zabbix_sender, Key, Value}}, {error, sending_failed}])
-  end,
-  {noreply, S};
-handle_cast({send, Name, Key, Value}, #state{cmd_opts=CO} = S) ->
-  CO1 = proplists:delete(local_name, CO),
-  #state{cmd_format=Format, error_handler=EH} = update_prepared(S#state{cmd_opts = [{local_name, Name} | CO1]}),
   R = os:cmd(cmd(Format, Key, Value)),
   case re:run(R, ?RESULT_PATTERN, [{capture, all_but_first, binary}, firstline]) of
     nomatch ->                EH([{source, {zabbix_sender, Key, Value}}, {error, {invalid_result, R}}]);
